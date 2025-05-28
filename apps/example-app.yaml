@@ -1,13 +1,33 @@
+# ArgoCD Application to manage the homelab-k3s repository using Kustomize
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: example
+  name: homelab-example
+  namespace: argocd
+  # Optional: Add finalizer to ensure clean deletion
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
+    repoURL: https://github.com/awesomejt/homelab-k3s.git
+    targetRevision: main
     path: example
-    repoURL: 'https://github.com/kubernetes-sigs/kustomize'
-    targetRevision: HEAD
+    kustomize:
+      # Optional: Customize the Kustomize name prefix (adjust as needed)
+      namePrefix: homelab-
   destination:
+    # Deploy to the same cluster where ArgoCD is running
+    server: https://kubernetes.default.svc
     namespace: default
-    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    automated:
+      # Automatically prune resources not in Git
+      prune: true
+      # Allow ArgoCD to create namespaces if needed
+      selfHeal: true
+    syncOptions:
+      # Create namespace if it doesn't exist
+      - CreateNamespace=true
+      # Validate resources before applying
+      - Validate=true

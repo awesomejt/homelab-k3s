@@ -112,6 +112,13 @@ kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 
+Install argocd cli (windows):
+
+```bash
+cd ~/bin
+curl -o argocd.exe -L https://github.com/argoproj/argo-cd/releases/download/v3.0.3/argocd-windows-amd64.exe
+```
+
 Port forward ArgoCD service:
 
 Grab "admin" secret:
@@ -123,8 +130,6 @@ kubectl get secret argocd-initial-admin-secret -n argocd -o yaml
 
 echo <password> | base64 --decode
 ```
-
-
 
 ```bash
 kubectl port-forward svc/argocd-server -n argocd 8080:443
