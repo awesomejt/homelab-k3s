@@ -139,3 +139,11 @@ Use web browser to access: https://127.0.0.1:8080/
 
 Browser should complain, but access it anyway.
 
+```bash
+# go into this repo folder on local system to apply application to ArgoCD
+cd ~/projects/homelab-k3s
+kubectl apply -f apps/example-app.yaml
+kubectl port-forward svc/homelab-nginx-service -n default 9080:80
+```
+
+Open web browser: http://127.0.0.1:9080/
