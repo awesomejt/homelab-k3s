@@ -1,149 +1,102 @@
-# Homelab K3s Cluster
+# Homelab K3s GitOps
 
-## Requirements/Assumptions
+This repository holds steady-state cluster configuration for the homelab K3s clusters.
+Bootstrap-only work stays in the Ansible repository: installing K3s, installing Argo CD,
+exposing Argo CD, adding the Git repository credential, and creating the initial root
+application.
 
-* SSH setup to VMs
-* VMs will be up to date
-* Determine a K3s token in advance
+## Layout
 
-## Provisioning
-
-* Create 4-5 Ubuntu VMs
-    * k3s-server: control plane server
-    * k3s-node-1: k3s worker node
-    * k3s-node-2: k3s worker node
-    * k3s-node-3: k3s worker node
-    * k3s-admin: kubernetes admin (optional)
-
-Keep track of the IP addresses of each VM. For example:
-
-```
-192.168.50.55 k3s-server
-192.168.50.56 k3s-node-1
-192.168.50.57 k3s-node-1
-192.168.50.58 k3s-node-1
-192.168.50.52 k3s-admin
+```text
+clusters/
+    prod/                  # Root app path for the prod cluster
+    stage/                 # Root app path for the stage cluster
+apps/
+    infrastructure/
+        metallb-config/      # MetalLB address pool and L2Advertisement manifests
+example/                 # Sample LoadBalancer workload for smoke testing
 ```
 
-This will be added to the /etc/hosts file of each VM.
+## App Of Apps Pattern
 
-## Setup K3s Server
+Each cluster environment has its own root path under `clusters/<env>`.
 
-Logon to VM that will become the K3s server.
+That root path contains:
 
-Copy IP address contents to /etc/hosts file:
+* An `AppProject` for that cluster
+* Child `Application` resources for cluster services
+
+Current child applications:
+
+* `metallb-<env>` installs the MetalLB controller from the upstream Helm chart
+* `metallb-config-<env>` applies the address pool and L2 advertisement from this repo
+
+This keeps the split clean:
+
+* Ansible owns bootstrap and break-glass recovery
+* Argo CD owns everything after bootstrap
+
+## Bootstrap Flow
+
+1. Provision VMs and baseline OS configuration with the Proxmox and Ansible repos.
+2. Run the Ansible K3s playbook for `stage` or `prod`.
+3. Ansible installs K3s, optional cert-manager, Argo CD, the Argo CD ingress, the GitOps repo credential, and the root Argo CD application.
+4. Argo CD syncs `clusters/<env>` from this repo.
+5. MetalLB is installed and configured from Git.
+
+## SSH Repository Access
+
+The Argo CD bootstrap in the Ansible repo expects this repository to be reachable over SSH.
+
+Generate a dedicated read-only deploy key:
 
 ```bash
-nano /etc/hosts
+ssh-keygen -t ed25519 -f ~/.ssh/argocd-homelab-k3s -C "argocd-homelab-k3s" -N ""
 ```
 
-Paste contents of k3s VM IP Addresses.
+Add the public key as a read-only deploy key on the GitHub repository.
 
-Run k3s server install:
-
-```bash
-curl -sfL https://get.k3s.io | sudo K3S_TOKEN="mysecret" sh -
-```
-
-Change the token value accordingly.
-
-Copy K3s config to user directory and change owner of file:
-
-```bash
-sudo cp /etc/rancher/k3s/k3s.yaml .
-chown jason:jason k3s.yaml  # change owner to user
-```
-
-## Kubectl on Windows
-
-```bash
-mkdir ~/bin  #if not created yet
-cd ~/bin
-curl -LO "https://dl.k8s.io/release/v1.33.0/bin/windows/amd64/kubectl.exe"
-```
-
-Append .bashrc file:
-
-```bash
-alias k="kubectl"
-
-PATH="~/bin:$PATH"
-```
-
-Copy K3s file from K3s server to local system:
-
-```bash
-scp jason@192.168.50.55:~/k3s.yaml .
-```
-
-Edit k3s.yaml file to change:
+Store the private key in the matching Ansible environment vault file:
 
 ```yaml
-clusters:
-- cluster:
-    server: https://192.168.50.55:6443
+vault_argocd_gitops_repo_ssh_private_key: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    ...
+    -----END OPENSSH PRIVATE KEY-----
 ```
 
-Change server field to point to K3s server IP or hostname on local network
+The GitOps repo URL used by the bootstrap flow is:
 
-Copy K3s file to local Kube config:
-
-```bash
-mkdir .kube
-mv k3s.yaml .kube/config
+```text
+git@github.com:awesomejt/homelab-k3s.git
 ```
 
-## K3s Nodes
+## MetalLB Address Pools
 
-Logon to each k3s worker node.
+MetalLB configuration lives here:
 
-Edit /etc/hosts file like above.
+* `apps/infrastructure/metallb-config/overlays/stage`
+* `apps/infrastructure/metallb-config/overlays/prod`
 
-Run k3s node install:
+Default pools are set to the high end of the `192.168.50.0/24` network:
 
-```bash
-curl -sfL https://get.k3s.io | sudo K3S_TOKEN="mysecret" K3S_URL=https://k3s-server:6443 sh
-```
+* Stage: `192.168.50.240-192.168.50.244`
+* Prod: `192.168.50.245-192.168.50.250`
 
-## Install ArgoCD
+Adjust those ranges before first sync if those addresses are already reserved elsewhere in the homelab.
 
-```bash
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-```
+## Adding More Apps
 
-Install argocd cli (windows):
+To add another cluster service or workload:
 
-```bash
-cd ~/bin
-curl -o argocd.exe -L https://github.com/argoproj/argo-cd/releases/download/v3.0.3/argocd-windows-amd64.exe
-```
+1. Add the application manifests under `apps/`
+2. Add a child Argo CD `Application` manifest under `clusters/<env>`
+3. Commit and push the change
+4. Let Argo CD reconcile it
 
-Port forward ArgoCD service:
+Keep anything needed to create the first working Argo CD instance in the Ansible repo, not here.
 
-Grab "admin" secret:
+## Smoke Test
 
-```bash
-kubectl get secret argocd-initial-admin-secret -n argocd -o yaml
-
-# take password and base64 decode
-
-echo <password> | base64 --decode
-```
-
-```bash
-kubectl port-forward svc/argocd-server -n argocd 8080:443
-```
-
-Use web browser to access: https://127.0.0.1:8080/ 
-
-Browser should complain, but access it anyway.
-
-```bash
-# go into this repo folder on local system to apply application to ArgoCD
-cd ~/projects/homelab-k3s
-kubectl apply -f apps/example-app.yaml
-kubectl port-forward svc/homelab-nginx-service -n default 9080:80
-```
-
-Open web browser: http://127.0.0.1:9080/
+The `example/` directory contains a simple `LoadBalancer` nginx workload you can point an Argo CD application at after MetalLB is healthy.
+It is intentionally not part of the default cluster bootstrap.

@@ -1,0 +1,7 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: homelab
+spec:
+  addresses:
+    - 192.168.50.245-192.168.50.250
