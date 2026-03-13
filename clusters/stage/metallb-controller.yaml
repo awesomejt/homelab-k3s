@@ -9,6 +9,21 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   project: homelab-stage
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: bgppeers.metallb.io
+      jsonPointers:
+        - /metadata/annotations
+        - /spec
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
   source:
     repoURL: https://metallb.github.io/metallb
     chart: metallb
@@ -18,10 +33,3 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: metallb-system
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
