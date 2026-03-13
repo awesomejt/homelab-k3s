@@ -99,12 +99,12 @@ Application manifests:
 Current defaults:
 
 * DNS provider: RFC2136 (`provider.name: rfc2136`)
-* RFC2136 server: `dns.taylor.lan:53`
+* RFC2136 server: `192.168.50.53:53` (Technitium DNS)
 * RFC2136 mode: insecure dynamic updates (`--rfc2136-insecure`)
 * Domain filter: `taylor.lan`
 * Sources: Kubernetes `Service` and `Ingress`
 
-Tune the RFC2136 connection and authentication fields in those manifests to match your DNS server policy before syncing in a production environment.
+Tune the RFC2136 connection and authentication fields in those manifests to match your DNS server policy before syncing in a production environment. The current config uses the Technitium server IP directly so ExternalDNS does not depend on in-cluster resolution of `dns.taylor.lan` during bootstrap.
 
 ## Harbor
 
