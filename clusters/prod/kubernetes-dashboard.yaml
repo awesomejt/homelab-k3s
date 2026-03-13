@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubernetes-dashboard-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  project: homelab-prod
+  source:
+    repoURL: https://kubernetes.github.io/dashboard/
+    chart: kubernetes-dashboard
+    targetRevision: 7.14.0
+    helm:
+      releaseName: kubernetes-dashboard
+      values: |
+        app:
+          ingress:
+            enabled: true
+            ingressClassName: traefik
+            useDefaultAnnotations: false
+            hosts:
+              - dashboard-prod.taylor.lan
+            annotations:
+              external-dns.alpha.kubernetes.io/hostname: dashboard-prod.taylor.lan
+            tls:
+              enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubernetes-dashboard
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

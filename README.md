@@ -32,6 +32,7 @@ Current child applications:
 * `metallb-config-<env>` applies the address pool and L2 advertisement from this repo
 * `external-dns-<env>` installs ExternalDNS from the upstream Helm chart for automatic DNS record management
 * `harbor-<env>` installs Harbor from the upstream Helm chart as the in-cluster container registry
+* `kubernetes-dashboard-<env>` installs Kubernetes Dashboard from the upstream Helm chart and exposes it via ingress
 
 This keeps the split clean:
 
