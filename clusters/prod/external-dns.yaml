@@ -16,7 +16,8 @@ spec:
     helm:
       releaseName: external-dns
       values: |
-        provider: rfc2136
+        provider:
+          name: rfc2136
         policy: upsert-only
         registry: txt
         txtOwnerId: homelab-prod
@@ -25,12 +26,11 @@ spec:
           - ingress
         domainFilters:
           - taylor.lan
-        rfc2136:
-          host: dns.taylor.lan
-          port: 53
-          zone: taylor.lan
-          tsigSecretAlg: hmac-sha256
-          tsigKeyname: external-dns.
+        extraArgs:
+          - --rfc2136-host=dns.taylor.lan
+          - --rfc2136-port=53
+          - --rfc2136-zone=taylor.lan
+          - --rfc2136-insecure
   destination:
     server: https://kubernetes.default.svc
     namespace: external-dns

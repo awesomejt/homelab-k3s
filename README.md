@@ -98,7 +98,9 @@ Application manifests:
 
 Current defaults:
 
-* DNS provider: RFC2136 (`provider: rfc2136`)
+* DNS provider: RFC2136 (`provider.name: rfc2136`)
+* RFC2136 server: `dns.taylor.lan:53`
+* RFC2136 mode: insecure dynamic updates (`--rfc2136-insecure`)
 * Domain filter: `taylor.lan`
 * Sources: Kubernetes `Service` and `Ingress`
 
@@ -107,6 +109,7 @@ Tune the RFC2136 connection and authentication fields in those manifests to matc
 ## Harbor
 
 Harbor is installed per environment from the upstream Helm chart and exposed through Traefik ingress.
+The current chart pin is `1.18.0`, which maps to Harbor app version `2.14`.
 
 Application manifests:
 
