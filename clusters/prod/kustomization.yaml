@@ -6,3 +6,4 @@ resources:
   - metallb-controller.yaml
   - metallb-config.yaml
   - external-dns.yaml
+  - harbor.yaml

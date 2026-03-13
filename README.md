@@ -31,6 +31,7 @@ Current child applications:
 * `metallb-<env>` installs the MetalLB controller from the upstream Helm chart
 * `metallb-config-<env>` applies the address pool and L2 advertisement from this repo
 * `external-dns-<env>` installs ExternalDNS from the upstream Helm chart for automatic DNS record management
+* `harbor-<env>` installs Harbor from the upstream Helm chart as the in-cluster container registry
 
 This keeps the split clean:
 
@@ -102,6 +103,25 @@ Current defaults:
 * Sources: Kubernetes `Service` and `Ingress`
 
 Tune the RFC2136 connection and authentication fields in those manifests to match your DNS server policy before syncing in a production environment.
+
+## Harbor
+
+Harbor is installed per environment from the upstream Helm chart and exposed through Traefik ingress.
+
+Application manifests:
+
+* `clusters/stage/harbor.yaml`
+* `clusters/prod/harbor.yaml`
+
+Current defaults:
+
+* Stage hostname: `harbor-stage.taylor.lan`
+* Prod hostname: `harbor-prod.taylor.lan`
+* TLS source: Harbor chart auto-generated certificate
+* Storage class: `local-path`
+* Update strategy: `Recreate` for PVC-backed components on RWO storage
+
+Review the ingress hostnames, storage sizing, and admin password in those manifests before first sync. If you want trusted TLS for Docker and Helm clients, replace the auto-generated certificate flow with a secret issued by your preferred CA or cert-manager.
 
 ## Adding More Apps
 

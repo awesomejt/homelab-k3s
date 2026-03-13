@@ -11,6 +11,7 @@ spec:
     - git@github.com:awesomejt/homelab-k3s.git
     - https://metallb.github.io/metallb
     - https://kubernetes-sigs.github.io/external-dns/
+    - https://helm.goharbor.io
   destinations:
     - namespace: '*'
       server: https://kubernetes.default.svc

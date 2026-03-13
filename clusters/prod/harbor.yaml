@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: harbor-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  project: homelab-prod
+  source:
+    repoURL: https://helm.goharbor.io
+    chart: harbor
+    targetRevision: 1.18.0
+    helm:
+      releaseName: harbor
+      values: |
+        expose:
+          type: ingress
+          tls:
+            enabled: true
+            certSource: auto
+          ingress:
+            className: traefik
+            hosts:
+              core: harbor-prod.taylor.lan
+        externalURL: https://harbor-prod.taylor.lan
+        updateStrategy:
+          type: Recreate
+        persistence:
+          enabled: true
+          persistentVolumeClaim:
+            registry:
+              storageClass: local-path
+              size: 50Gi
+            jobservice:
+              jobLog:
+                storageClass: local-path
+                size: 2Gi
+            database:
+              storageClass: local-path
+              size: 2Gi
+            redis:
+              storageClass: local-path
+              size: 2Gi
+            trivy:
+              storageClass: local-path
+              size: 5Gi
+        harborAdminPassword: Harbor12345!
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: harbor
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
