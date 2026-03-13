@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  project: homelab-prod
+  source:
+    repoURL: https://kubernetes-sigs.github.io/external-dns/
+    chart: external-dns
+    targetRevision: 1.18.0
+    helm:
+      releaseName: external-dns
+      values: |
+        provider: rfc2136
+        policy: upsert-only
+        registry: txt
+        txtOwnerId: homelab-prod
+        sources:
+          - service
+          - ingress
+        domainFilters:
+          - taylor.lan
+        rfc2136:
+          host: dns.taylor.lan
+          port: 53
+          zone: taylor.lan
+          tsigSecretAlg: hmac-sha256
+          tsigKeyname: external-dns.
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

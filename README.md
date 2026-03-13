@@ -30,6 +30,7 @@ Current child applications:
 
 * `metallb-<env>` installs the MetalLB controller from the upstream Helm chart
 * `metallb-config-<env>` applies the address pool and L2 advertisement from this repo
+* `external-dns-<env>` installs ExternalDNS from the upstream Helm chart for automatic DNS record management
 
 This keeps the split clean:
 
@@ -84,6 +85,23 @@ Default pools are set to the high end of the `192.168.50.0/24` network:
 * Prod: `192.168.50.245-192.168.50.250`
 
 Adjust those ranges before first sync if those addresses are already reserved elsewhere in the homelab.
+
+## ExternalDNS
+
+ExternalDNS is installed per environment from the upstream Helm chart and configured for RFC2136.
+
+Application manifests:
+
+* `clusters/stage/external-dns.yaml`
+* `clusters/prod/external-dns.yaml`
+
+Current defaults:
+
+* DNS provider: RFC2136 (`provider: rfc2136`)
+* Domain filter: `taylor.lan`
+* Sources: Kubernetes `Service` and `Ingress`
+
+Tune the RFC2136 connection and authentication fields in those manifests to match your DNS server policy before syncing in a production environment.
 
 ## Adding More Apps
 

@@ -5,3 +5,4 @@ resources:
   - project.yaml
   - metallb-controller.yaml
   - metallb-config.yaml
+  - external-dns.yaml
