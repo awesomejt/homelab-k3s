@@ -12,7 +12,7 @@ spec:
     - https://metallb.github.io/metallb
     - https://kubernetes-sigs.github.io/external-dns/
     - https://helm.goharbor.io
-    - https://github.com/kubernetes-retired/dashboard.git
+    - https://kubernetes-sigs.github.io/headlamp/
   destinations:
     - namespace: '*'
       server: https://kubernetes.default.svc

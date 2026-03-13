@@ -7,4 +7,4 @@ resources:
   - metallb-config.yaml
   - external-dns.yaml
   - harbor.yaml
-  - kubernetes-dashboard.yaml
+  - headlamp.yaml
