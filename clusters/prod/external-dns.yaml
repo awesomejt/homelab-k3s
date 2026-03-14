@@ -24,13 +24,31 @@ spec:
         sources:
           - service
           - ingress
+        env:
+          - name: RFC2136_TSIG_KEYNAME
+            valueFrom:
+              secretKeyRef:
+                name: external-dns-rfc2136
+                key: tsig-keyname
+          - name: RFC2136_TSIG_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: external-dns-rfc2136
+                key: tsig-secret
+          - name: RFC2136_TSIG_SECRET_ALG
+            valueFrom:
+              secretKeyRef:
+                name: external-dns-rfc2136
+                key: tsig-secret-alg
         domainFilters:
           - taylor.lan
         extraArgs:
           - --rfc2136-host=192.168.50.53
           - --rfc2136-port=53
           - --rfc2136-zone=taylor.lan
-          - --rfc2136-insecure
+          - --rfc2136-tsig-keyname=$(RFC2136_TSIG_KEYNAME)
+          - --rfc2136-tsig-secret=$(RFC2136_TSIG_SECRET)
+          - --rfc2136-tsig-secret-alg=$(RFC2136_TSIG_SECRET_ALG)
   destination:
     server: https://kubernetes.default.svc
     namespace: external-dns
