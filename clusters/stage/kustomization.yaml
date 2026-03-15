@@ -8,3 +8,4 @@ resources:
   - external-dns.yaml
   - harbor.yaml
   - headlamp.yaml
+  - reposilite.yaml

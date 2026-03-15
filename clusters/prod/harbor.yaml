@@ -47,7 +47,8 @@ spec:
             trivy:
               storageClass: local-path
               size: 5Gi
-        harborAdminPassword: Harbor12345!
+        existingSecretAdminPassword: harbor-admin-credentials
+        existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
   destination:
     server: https://kubernetes.default.svc
     namespace: harbor
