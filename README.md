@@ -33,6 +33,8 @@ Current child applications:
 * `external-dns-<env>` installs ExternalDNS from the upstream Helm chart for automatic DNS record management
 * `harbor-<env>` installs Harbor from the upstream Helm chart as the in-cluster container registry
 * `headlamp-<env>` installs Headlamp from the upstream Helm chart and exposes it via ingress
+* `reposilite-<env>` installs Reposilite from custom manifests as the in-cluster Maven artifact repository
+* `kube-prometheus-stack-<env>` installs Prometheus, Grafana, and Alertmanager from the upstream Helm chart for monitoring
 
 This keeps the split clean:
 
@@ -132,6 +134,53 @@ Current defaults:
 * Update strategy: `Recreate` for PVC-backed components on RWO storage
 
 Review the ingress hostnames, storage sizing, and admin password in those manifests before first sync. If you want trusted TLS for Docker and Helm clients, replace the auto-generated certificate flow with a secret issued by your preferred CA or cert-manager.
+
+## Reposilite
+
+Reposilite is installed per environment from custom Kubernetes manifests and exposed through Traefik ingress.
+
+Application manifests:
+
+* `clusters/stage/reposilite.yaml`
+* `clusters/prod/reposilite.yaml`
+
+Current defaults:
+
+* Stage hostname: `artifacts-stage.taylor.lan`
+* Prod hostname: `artifacts-prod.taylor.lan`
+* TLS source: cert-manager auto-generated certificate
+* Storage class: `local-path` (20Gi PVC)
+* Admin credentials: Seeded by Ansible from vault values
+
+The `reposilite-admin` secret is seeded by the Ansible K3s bootstrap role from values in `ansible/vars/<env>/vars.yaml` and `ansible/vars/<env>/secrets.yaml`:
+
+* `reposilite_admin_username` (clear-text in vars)
+* `vault_reposilite_admin_password` (vaulted in secrets)
+
+This keeps sensitive repository credentials out of Git while still allowing GitOps-managed application configuration.
+
+## Kube Prometheus Stack
+
+Prometheus, Grafana, and Alertmanager are installed per environment from the upstream Helm chart and exposed through Traefik ingress.
+
+Application manifests:
+
+* `clusters/stage/kube-prometheus-stack.yaml`
+* `clusters/prod/kube-prometheus-stack.yaml`
+
+Current defaults:
+
+* Stage hostnames: `grafana-stage.taylor.lan`, `prometheus-stage.taylor.lan`, `alertmanager-stage.taylor.lan`
+* Prod hostnames: `grafana-prod.taylor.lan`, `prometheus-prod.taylor.lan`, `alertmanager-prod.taylor.lan`
+* TLS source: cert-manager auto-generated certificates
+* Grafana admin credentials: Seeded by Ansible from vault values
+
+The `grafana-admin` secret is seeded by the Ansible K3s bootstrap role from values in `ansible/vars/<env>/vars.yaml` and `ansible/vars/<env>/secrets.yaml`:
+
+* `grafana_admin_username` (clear-text in vars)
+* `vault_grafana_admin_password` (vaulted in secrets)
+
+Grafana is automatically configured with Prometheus as a data source. This keeps sensitive monitoring credentials out of Git while still allowing GitOps-managed application configuration.
 
 ## Adding More Apps
 

@@ -9,3 +9,4 @@ resources:
   - harbor.yaml
   - headlamp.yaml
   - reposilite.yaml
+  - kube-prometheus-stack.yaml

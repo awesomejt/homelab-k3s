@@ -1,0 +1,64 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  project: homelab-prod
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 61.3.1
+    helm:
+      valueFiles:
+        - values.yaml
+      values: |
+        grafana:
+          admin:
+            existingSecret: "grafana-admin"
+            userKey: "admin-user"
+            passwordKey: "admin-password"
+          ingress:
+            enabled: true
+            ingressClassName: traefik
+            hosts:
+              - grafana-prod.taylor.lan
+            tls:
+              - secretName: grafana-prod-tls
+                hosts:
+                  - grafana-prod.taylor.lan
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+        prometheus:
+          ingress:
+            enabled: true
+            ingressClassName: traefik
+            hosts:
+              - prometheus-prod.taylor.lan
+            tls:
+              - secretName: prometheus-prod-tls
+                hosts:
+                  - prometheus-prod.taylor.lan
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+        alertmanager:
+          ingress:
+            enabled: true
+            ingressClassName: traefik
+            hosts:
+              - alertmanager-prod.taylor.lan
+            tls:
+              - secretName: alertmanager-prod-tls
+                hosts:
+                  - alertmanager-prod.taylor.lan
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:

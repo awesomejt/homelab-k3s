@@ -1,0 +1,42 @@
+grafana:
+  admin:
+    existingSecret: "grafana-admin"
+    userKey: "admin-user"
+    passwordKey: "admin-password"
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - grafana-stage.taylor.lan
+    tls:
+      - secretName: grafana-stage-tls
+        hosts:
+          - grafana-stage.taylor.lan
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+
+prometheus:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - prometheus-stage.taylor.lan
+    tls:
+      - secretName: prometheus-stage-tls
+        hosts:
+          - prometheus-stage.taylor.lan
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+
+alertmanager:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - alertmanager-stage.taylor.lan
+    tls:
+      - secretName: alertmanager-stage-tls
+        hosts:
+          - alertmanager-stage.taylor.lan
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
