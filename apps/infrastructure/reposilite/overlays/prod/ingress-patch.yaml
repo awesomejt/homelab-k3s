@@ -5,7 +5,7 @@ metadata:
 spec:
   tls:
   - hosts:
-    - artifacts-prod.taylor.lan
-    secretName: artifacts-prod-tls
+    - artifacts.prod.lab
+    secretName: artifacts-tls
   rules:
-  - host: artifacts-prod.taylor.lan
+  - host: artifacts.prod.lab

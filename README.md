@@ -28,6 +28,7 @@ That root path contains:
 
 Current child applications:
 
+* `cert-manager-issuers-<env>` applies shared cert-manager `ClusterIssuer` resources from this repo
 * `metallb-<env>` installs the MetalLB controller from the upstream Helm chart
 * `metallb-config-<env>` applies the address pool and L2 advertisement from this repo
 * `external-dns-<env>` installs ExternalDNS from the upstream Helm chart for automatic DNS record management
@@ -104,7 +105,7 @@ Current defaults:
 * DNS provider: RFC2136 (`provider.name: rfc2136`)
 * RFC2136 server: `192.168.50.53:53` (Technitium DNS)
 * RFC2136 auth: TSIG values read from Kubernetes secret `external-dns-rfc2136`
-* Domain filter: `taylor.lan`
+* Domain filters: `stage.lab` (stage) and `prod.lab` (prod)
 * Sources: Kubernetes `Service` and `Ingress`
 
 The `external-dns-rfc2136` secret is seeded by the Ansible K3s bootstrap role from vault values in `ansible/vars/<env>/secrets.yaml`:
@@ -114,6 +115,22 @@ The `external-dns-rfc2136` secret is seeded by the Ansible K3s bootstrap role fr
 * `vault_external_dns_rfc2136_tsig_secret_alg` (optional, defaults to `hmac-sha256`)
 
 This keeps sensitive DNS credentials out of Git while still allowing GitOps-managed application configuration.
+
+## Cert-Manager Issuers
+
+Cluster-wide cert-manager issuer resources are managed in GitOps so certificate naming stays consistent across environments.
+
+Application manifests:
+
+* `clusters/stage/cert-manager-issuers.yaml`
+* `clusters/prod/cert-manager-issuers.yaml`
+
+Current default:
+
+* ClusterIssuer name: `letsencrypt-lab`
+* Issuer type: `selfSigned`
+
+All ingress annotations in this repo reference `cert-manager.io/cluster-issuer: letsencrypt-lab`.
 
 ## Harbor
 
@@ -127,8 +144,8 @@ Application manifests:
 
 Current defaults:
 
-* Stage hostname: `harbor-stage.taylor.lan`
-* Prod hostname: `harbor-prod.taylor.lan`
+* Stage hostname: `harbor.stage.lab`
+* Prod hostname: `harbor.prod.lab`
 * TLS source: Harbor chart auto-generated certificate
 * Storage class: `local-path`
 * Update strategy: `Recreate` for PVC-backed components on RWO storage
@@ -146,8 +163,8 @@ Application manifests:
 
 Current defaults:
 
-* Stage hostname: `artifacts-stage.taylor.lan`
-* Prod hostname: `artifacts-prod.taylor.lan`
+* Stage hostname: `artifacts.stage.lab`
+* Prod hostname: `artifacts.prod.lab`
 * TLS source: cert-manager auto-generated certificate
 * Storage class: `local-path` (20Gi PVC)
 * Admin credentials: Seeded by Ansible from vault values
@@ -170,8 +187,8 @@ Application manifests:
 
 Current defaults:
 
-* Stage hostnames: `grafana-stage.taylor.lan`, `prometheus-stage.taylor.lan`, `alertmanager-stage.taylor.lan`
-* Prod hostnames: `grafana-prod.taylor.lan`, `prometheus-prod.taylor.lan`, `alertmanager-prod.taylor.lan`
+* Stage hostnames: `grafana.stage.lab`, `prometheus.stage.lab`, `alertmanager.stage.lab`
+* Prod hostnames: `grafana.prod.lab`, `prometheus.prod.lab`, `alertmanager.prod.lab`
 * TLS source: cert-manager auto-generated certificates
 * Grafana admin credentials: Seeded by Ansible from vault values
 

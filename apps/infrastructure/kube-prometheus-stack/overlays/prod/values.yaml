@@ -7,36 +7,36 @@ grafana:
     enabled: true
     ingressClassName: traefik
     hosts:
-      - grafana-prod.taylor.lan
+      - grafana.prod.lab
     tls:
-      - secretName: grafana-prod-tls
+      - secretName: grafana-tls
         hosts:
-          - grafana-prod.taylor.lan
+          - grafana.prod.lab
     annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
+      cert-manager.io/cluster-issuer: letsencrypt-lab
 
 prometheus:
   ingress:
     enabled: true
     ingressClassName: traefik
     hosts:
-      - prometheus-prod.taylor.lan
+      - prometheus.prod.lab
     tls:
-      - secretName: prometheus-prod-tls
+      - secretName: prometheus-tls
         hosts:
-          - prometheus-prod.taylor.lan
+          - prometheus.prod.lab
     annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
+      cert-manager.io/cluster-issuer: letsencrypt-lab
 
 alertmanager:
   ingress:
     enabled: true
     ingressClassName: traefik
     hosts:
-      - alertmanager-prod.taylor.lan
+      - alertmanager.prod.lab
     tls:
-      - secretName: alertmanager-prod-tls
+      - secretName: alertmanager-tls
         hosts:
-          - alertmanager-prod.taylor.lan
+          - alertmanager.prod.lab
     annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
+      cert-manager.io/cluster-issuer: letsencrypt-lab

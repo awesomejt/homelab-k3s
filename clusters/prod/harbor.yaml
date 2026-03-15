@@ -24,8 +24,8 @@ spec:
           ingress:
             className: traefik
             hosts:
-              core: harbor-prod.taylor.lan
-        externalURL: https://harbor-prod.taylor.lan
+              core: harbor.prod.lab
+        externalURL: https://harbor.prod.lab
         updateStrategy:
           type: Recreate
         persistence:

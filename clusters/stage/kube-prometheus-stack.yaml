@@ -14,8 +14,6 @@ spec:
     chart: kube-prometheus-stack
     targetRevision: 61.3.1
     helm:
-      valueFiles:
-        - values.yaml
       values: |
         grafana:
           admin:
@@ -26,37 +24,37 @@ spec:
             enabled: true
             ingressClassName: traefik
             hosts:
-              - grafana-stage.taylor.lan
+              - grafana.stage.lab
             tls:
-              - secretName: grafana-stage-tls
+              - secretName: grafana-tls
                 hosts:
-                  - grafana-stage.taylor.lan
+                  - grafana.stage.lab
             annotations:
-              cert-manager.io/cluster-issuer: letsencrypt-prod
+              cert-manager.io/cluster-issuer: letsencrypt-lab
         prometheus:
           ingress:
             enabled: true
             ingressClassName: traefik
             hosts:
-              - prometheus-stage.taylor.lan
+              - prometheus.stage.lab
             tls:
-              - secretName: prometheus-stage-tls
+              - secretName: prometheus-tls
                 hosts:
-                  - prometheus-stage.taylor.lan
+                  - prometheus.stage.lab
             annotations:
-              cert-manager.io/cluster-issuer: letsencrypt-prod
+              cert-manager.io/cluster-issuer: letsencrypt-lab
         alertmanager:
           ingress:
             enabled: true
             ingressClassName: traefik
             hosts:
-              - alertmanager-stage.taylor.lan
+              - alertmanager.stage.lab
             tls:
-              - secretName: alertmanager-stage-tls
+              - secretName: alertmanager-tls
                 hosts:
-                  - alertmanager-stage.taylor.lan
+                  - alertmanager.stage.lab
             annotations:
-              cert-manager.io/cluster-issuer: letsencrypt-prod
+              cert-manager.io/cluster-issuer: letsencrypt-lab
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

@@ -3,15 +3,15 @@ kind: Ingress
 metadata:
   name: reposilite
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/cluster-issuer: letsencrypt-lab
 spec:
   ingressClassName: traefik
   tls:
   - hosts:
-    - reposilite.taylor.lan
+    - reposilite.lab
     secretName: reposilite-tls
   rules:
-  - host: reposilite.taylor.lan
+  - host: reposilite.lab
     http:
       paths:
       - path: /

@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - project.yaml
+  - cert-manager-issuers.yaml
   - metallb-controller.yaml
   - metallb-config.yaml
   - external-dns.yaml
