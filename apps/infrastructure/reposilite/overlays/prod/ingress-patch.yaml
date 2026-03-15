@@ -5,7 +5,7 @@ metadata:
 spec:
   tls:
   - hosts:
-    - artifacts-stage.taylor.lan
-    secretName: artifacts-stage-tls
+    - artifacts-prod.taylor.lan
+    secretName: artifacts-prod-tls
   rules:
-  - host: artifacts-stage.taylor.lan
+  - host: artifacts-prod.taylor.lan

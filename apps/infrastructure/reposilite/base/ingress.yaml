@@ -8,10 +8,10 @@ spec:
   ingressClassName: traefik
   tls:
   - hosts:
-    - reposilite-stage.taylor.lan
+    - reposilite.taylor.lan
     secretName: reposilite-tls
   rules:
-  - host: reposilite-stage.taylor.lan
+  - host: reposilite.taylor.lan
     http:
       paths:
       - path: /
