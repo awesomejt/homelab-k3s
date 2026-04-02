@@ -16,6 +16,10 @@ spec:
     - https://prometheus-community.github.io/helm-charts
     - https://argoproj.github.io/argo-helm
     - https://charts.longhorn.io
+    - https://stakater.github.io/stakater-charts
+    - https://kubernetes-sigs.github.io/descheduler/
+    - https://bitnami-labs.github.io/sealed-secrets
+    - https://charts.deliveryhero.io/
   destinations:
     - namespace: '*'
       server: https://kubernetes.default.svc

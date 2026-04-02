@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: node-problem-detector-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "62"
+spec:
+  project: homelab-dev
+  sources:
+    - repoURL: https://charts.deliveryhero.io/
+      chart: node-problem-detector
+      targetRevision: 2.3.12
+      helm:
+        releaseName: node-problem-detector
+        valueFiles:
+          - $values/apps/infrastructure/node-problem-detector/overlays/dev/values.yaml
+    - repoURL: git@github.com:awesomejt/homelab-k3s.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

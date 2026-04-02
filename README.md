@@ -54,6 +54,11 @@ apps/
     argo-workflows/overlays/dev/values.yaml
     kube-prometheus-stack/overlays/{dev,stage,prod}/values.yaml
     longhorn/overlays/dev/values.yaml
+    metrics-server-config/overlays/dev/          # K3s metrics-server HelmChartConfig
+    reloader/overlays/dev/values.yaml
+    sealed-secrets/overlays/dev/values.yaml
+    descheduler/overlays/dev/values.yaml
+    node-problem-detector/overlays/dev/values.yaml
 ```
 
 Helm values are split into dedicated files under `apps/infrastructure/<service>/overlays/<env>/values.yaml`.
@@ -69,15 +74,29 @@ For dev, applications are currently ordered by sync wave:
 
 1. `argocd-config-dev`
 2. `traefik-config-dev`
-3. `metallb-dev`
-4. `cert-manager-dev`
-5. `cert-manager-issuers-dev`
-6. `metallb-config-dev`
-7. `longhorn-dev`
-8. `external-dns-dev`
-9. `kube-prometheus-stack-dev`
-10. `headlamp-dev`
-11. `argo-workflows-dev`
+3. `metrics-server-config-dev`
+4. `metallb-dev`
+5. `cert-manager-dev`
+6. `cert-manager-issuers-dev`
+7. `metallb-config-dev`
+8. `longhorn-dev`
+9. `external-dns-dev`
+10. `kube-prometheus-stack-dev`
+11. `reloader-dev`
+12. `headlamp-dev`
+13. `argo-workflows-dev`
+14. `sealed-secrets-dev`
+15. `descheduler-dev`
+16. `node-problem-detector-dev`
+
+Argo CD is now exposed through Traefik ingress in each environment using this hostname pattern:
+
+- `argocd.dev.lab`
+- `argocd.stage.lab`
+- `argocd.prod.lab`
+
+DNS records are created automatically by ExternalDNS from the Argo CD ingress annotation
+`external-dns.alpha.kubernetes.io/hostname`.
 
 ## Bootstrap Flow
 
@@ -111,6 +130,11 @@ creation_rules:
 - Any Longhorn backup target credentials (if using S3/NFS backup target)
 - Any additional app credentials introduced under `apps/**`
 
+Current encrypted secret manifests in this repository:
+
+- `apps/infrastructure/external-dns/base/secret.yaml` (already encrypted and committed)
+- `apps/infrastructure/kube-prometheus-stack/base/secret.yaml` (already encrypted and committed)
+
 Bootstrap-only secrets stay in Ansible Vault, not this repository:
 
 - Argo CD repository SSH private key
@@ -124,19 +148,24 @@ Bootstrap-only secrets stay in Ansible Vault, not this repository:
 - [x] Add dev Traefik config via `HelmChartConfig`
 - [x] Add dev Longhorn and Argo Workflows applications
 - [x] Add dev Argo CD config application
-- [ ] Encrypt and commit dev `external-dns-rfc2136` secret manifest
-- [ ] Encrypt and commit dev `grafana-admin` secret manifest
+- [x] Encrypt and commit dev `external-dns-rfc2136` secret manifest
+- [x] Encrypt and commit dev `grafana-admin` secret manifest
+- [x] Add dev `metrics-server-config` application and HelmChartConfig
+- [x] Add dev `reloader` application
+- [x] Add dev `sealed-secrets` application
+- [x] Add dev `descheduler` application
+- [x] Add dev `node-problem-detector` application
 - [ ] Sync dev and validate health for all core services
 - [ ] Promote working manifests to `stage`
 - [ ] Promote working manifests to `prod`
 
-## Recommended Additional Homelab Services
+## Additional Services Implemented In Dev
 
-- `reloader` for auto-restarting pods on ConfigMap/Secret changes
-- `descheduler` for periodic rebalance and cleanup on small clusters
-- `metrics-server` tuning (if needed) for HPA stability
-- `sealed-secrets` only if you want contributor-friendly secret UX beyond SOPS
-- `node-problem-detector` for better node-level alerting
+- `metrics-server-config-dev`: tunes packaged K3s metrics-server args
+- `reloader-dev`: auto-rolls workloads when ConfigMaps/Secrets change
+- `sealed-secrets-dev`: optional encrypted secret workflow for contributors
+- `descheduler-dev`: periodic cleanup/rebalancing of suboptimal pod placement
+- `node-problem-detector-dev`: node-level problem events and metrics
 
 ## Notes
 

@@ -1,0 +1,7 @@
+reloader:
+  reloadOnCreate: true
+  reloadOnDelete: true
+  watchGlobally: true
+
+podMonitor:
+  enabled: true

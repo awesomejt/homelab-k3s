@@ -1,0 +1,17 @@
+kind: CronJob
+
+schedule: "*/30 * * * *"
+
+deschedulerPolicy:
+  profiles:
+    - name: default
+      pluginConfig:
+        - name: RemoveDuplicates
+        - name: RemovePodsViolatingNodeTaints
+        - name: RemovePodsViolatingInterPodAntiAffinity
+      plugins:
+        deschedule:
+          enabled:
+            - RemoveDuplicates
+            - RemovePodsViolatingNodeTaints
+            - RemovePodsViolatingInterPodAntiAffinity
