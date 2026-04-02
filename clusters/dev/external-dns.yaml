@@ -20,9 +20,6 @@ spec:
     - repoURL: git@github.com:awesomejt/homelab-k3s.git
       targetRevision: main
       ref: values
-    - repoURL: git@github.com:awesomejt/homelab-k3s.git
-      targetRevision: main
-      path: apps/infrastructure/external-dns/base
   destination:
     server: https://kubernetes.default.svc
     namespace: external-dns

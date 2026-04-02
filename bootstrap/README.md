@@ -270,7 +270,7 @@ kubectl -n argocd describe ingress argocd-server-ingress
 If you have not bootstrapped stage/prod yet, focus on the dev context only.
 
 ```bash
-kubectl config use-context k3s-dev
+kubectl config use-context dev
 kubectl config current-context
 ```
 
