@@ -1,305 +1,145 @@
 # Homelab K3s GitOps
 
-This repository holds steady-state cluster configuration for the homelab K3s clusters.
-Bootstrap-only work stays in the Ansible repository: installing K3s, installing Argo CD,
-configuring KSOPS/SOPS decryption, adding the Git repository credential, and creating the
-initial root application.
+This repository holds steady-state cluster configuration for homelab K3s clusters.
+Bootstrap-only work stays in the Ansible repository (install K3s, install Argo CD,
+configure SOPS decryption key, add repository SSH credential, and create root app).
 
-## Layout
+## Cluster Strategy
+
+The repository is organized for three cluster environments:
+
+- `clusters/dev`
+- `clusters/stage`
+- `clusters/prod`
+
+Implementation is dev-first. Services are validated in `dev`, then promoted to `stage`, then `prod`.
+
+## Core Services (Target State)
+
+- MetalLB
+- Traefik (ingress controller)
+- cert-manager
+- ExternalDNS
+- Headlamp
+- Argo Workflows
+- kube-prometheus-stack (Prometheus + Grafana + Alertmanager)
+- Longhorn
+- Argo CD configuration managed from GitOps
+
+Deliberately excluded from this repo:
+
+- Harbor
+- Reposilite
+
+Nexus on a dedicated VM is used for image and artifact registry duties.
+
+## Repository Layout
 
 ```text
 clusters/
-    prod/                  # Root app path for the prod cluster
-    stage/                 # Root app path for the stage cluster
+  dev/                      # Root Argo CD app path for dev
+  stage/                    # Root Argo CD app path for stage
+  prod/                     # Root Argo CD app path for prod
+
 apps/
-    infrastructure/
-        metallb-config/      # MetalLB address pool and L2Advertisement manifests
-example/                 # Sample LoadBalancer workload for smoke testing
+  infrastructure/
+    argocd/overlays/dev/                  # Argo CD self-managed config
+    traefik-config/overlays/dev/          # K3s Traefik HelmChartConfig
+    cert-manager/overlays/dev/values.yaml
+    cert-manager-issuers/base/
+    metallb-controller/overlays/dev/values.yaml
+    metallb-config/overlays/{dev,stage,prod}/
+    external-dns/overlays/dev/values.yaml
+    headlamp/overlays/dev/values.yaml
+    argo-workflows/overlays/dev/values.yaml
+    kube-prometheus-stack/overlays/{dev,stage,prod}/values.yaml
+    longhorn/overlays/dev/values.yaml
 ```
+
+Helm values are split into dedicated files under `apps/infrastructure/<service>/overlays/<env>/values.yaml`.
 
 ## App Of Apps Pattern
 
-Each cluster environment has its own root path under `clusters/<env>`.
+Each `clusters/<env>` path contains:
 
-That root path contains:
+- An `AppProject` for that environment
+- Child Argo CD `Application` resources for cluster services
 
-* An `AppProject` for that cluster
-* Child `Application` resources for cluster services
+For dev, applications are currently ordered by sync wave:
 
-Current child applications:
-
-* `cert-manager-issuers-<env>` applies shared cert-manager `ClusterIssuer` resources from this repo
-* `metallb-<env>` installs the MetalLB controller from the upstream Helm chart
-* `metallb-config-<env>` applies the address pool and L2 advertisement from this repo
-* `external-dns-<env>` installs ExternalDNS from the upstream Helm chart for automatic DNS record management
-* `harbor-<env>` installs Harbor from the upstream Helm chart as the in-cluster container registry
-* `headlamp-<env>` installs Headlamp from the upstream Helm chart and exposes it via ingress
-* `reposilite-<env>` installs Reposilite from custom manifests as the in-cluster Maven artifact repository
-* `kube-prometheus-stack-<env>` installs Prometheus, Grafana, and Alertmanager from the upstream Helm chart for monitoring
-
-This keeps the split clean:
-
-* Ansible owns bootstrap and break-glass recovery
-* Argo CD owns everything after bootstrap
+1. `argocd-config-dev`
+2. `traefik-config-dev`
+3. `metallb-dev`
+4. `cert-manager-dev`
+5. `cert-manager-issuers-dev`
+6. `metallb-config-dev`
+7. `longhorn-dev`
+8. `external-dns-dev`
+9. `kube-prometheus-stack-dev`
+10. `headlamp-dev`
+11. `argo-workflows-dev`
 
 ## Bootstrap Flow
 
-1. Provision VMs and baseline OS configuration with the Proxmox and Ansible repos.
-2. Run the Ansible K3s playbook for `stage` or `prod`.
-3. Ansible installs K3s first, then runs a separate bootstrap playbook that installs Argo CD,
-   configures KSOPS/SOPS decryption with an age key, adds the GitOps repo credential, and creates
-   the root Argo CD application.
-4. Argo CD syncs `clusters/<env>` from this repo.
-5. MetalLB is installed and configured from Git.
-
-## SSH Repository Access
-
-The Argo CD bootstrap in the Ansible repo expects this repository to be reachable over SSH.
-
-Generate a dedicated read-only deploy key:
-
-```bash
-ssh-keygen -t ed25519 -f ~/.ssh/argocd-homelab-k3s -C "argocd-homelab-k3s" -N ""
-```
-
-Add the public key as a read-only deploy key on the GitHub repository.
-
-Store the private key in the matching Ansible environment vault file:
-
-```yaml
-vault_argocd_gitops_repo_ssh_private_key: |
-    -----BEGIN OPENSSH PRIVATE KEY-----
-    ...
-    -----END OPENSSH PRIVATE KEY-----
-```
-
-The GitOps repo URL used by the bootstrap flow is:
-
-```text
-git@github.com:awesomejt/homelab-k3s.git
-```
+1. Provision nodes and base OS from Proxmox/Ansible.
+2. Run Ansible K3s playbook for the environment.
+3. Run Ansible bootstrap playbook to install Argo CD and seed repo/age keys.
+4. Argo CD syncs `clusters/<env>` from this repository.
+5. Child apps reconcile continuously.
 
 ## SOPS Secret Management
 
-Runtime application secrets should be committed in this repository only as SOPS-encrypted
-manifests. The age private key is stored in Ansible Vault and seeded during bootstrap as a
-Kubernetes secret in the `argocd` namespace.
+Runtime secrets are committed only as SOPS-encrypted manifests.
 
-### Setup: Configure `.sops.yaml`
+### `.sops.yaml`
 
-Create a `.sops.yaml` file in the repository root to define the encryption key:
+`.sops.yaml` is safe to commit because it contains the age public key, not the private key.
+
+Current rule:
 
 ```yaml
 creation_rules:
   - path_regex: ^apps/.*\.yaml$
-    age: age1<your-public-key-here>
+    age: age1hsjjjnyycyz2r2c4rm9zkctcm0wz9nm4pwcq0ka5pzpypvthxfaqgqn888
 ```
 
-The public key corresponds to the `vault_sops_age_key` in `ansible/vars/<env>/secrets.yaml`.
-
-To find your public key if you only have the private key:
-
-```bash
-# Extract public key from age private key
-grep "# public key:" ~/.config/sops/age/keys.txt | sed 's/# public key: //'
-```
-
-### Creating Encrypted Secrets
-
-Example: Create a secret for ExternalDNS RFC2136 TSIG credentials:
-
-```bash
-# Create plaintext manifest
-cat > apps/infrastructure/external-dns/base/secret.yaml << 'EOF'
-apiVersion: v1
-kind: Secret
-metadata:
-  name: external-dns-rfc2136
-  namespace: external-dns
-type: Opaque
-stringData:
-  tsig-secret: "your-tsig-key-here"
-  tsig-keyname: "externaldns.lab"
-EOF
-
-# Encrypt it with SOPS
-sops -e -i apps/infrastructure/external-dns/base/secret.yaml
-
-# Commit the encrypted version
-git add apps/infrastructure/external-dns/base/secret.yaml
-git commit -m "feat: add external-dns TSIG secret (encrypted)"
-git push
-```
-
-Once pushed, Argo CD will automatically decrypt the secret using the age key seeded in the `argocd`
-namespace during bootstrap. You can verify decryption works by checking the secret in the cluster:
-
-```bash
-# After Argo CD syncs
-k3s kubectl -n external-dns get secret external-dns-rfc2136 -o jsonpath='{.data.tsig-secret}' | base64 -d
-```
-
-### Common Encrypted Secrets
-
-Example paths for application secrets:
-
-```
-apps/infrastructure/externa-dns/base/secret.yaml         # ExternalDNS TSIG
-apps/infrastructure/harbor/base/secret.yaml               # Harbor admin credentials
-apps/infrastructure/reposilite/base/secret.yaml           # Reposilite credentials
-apps/infrastructure/kube-prometheus-stack/base/secret.yaml # Grafana admin password
-```
-
-Example: Grafana admin password:
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: grafana-admin
-  namespace: monitoring
-type: Opaque
-stringData:
-  admin-password: "your-strong-password"
-```
-
-Reference from your Helm values:
-
-```yaml
-# In values overlay or Helm release
-adminPassword: <ENCRYPTED-SECRET-GOES-HERE>  # OR reference via ExternalSecret
-# Better: use ExternalSecret + secret reference
-```
-
-### Recommended Pattern
-
-* Keep encrypted secret manifests under `apps/**` alongside the workloads that consume them.
-* Reference those secrets from your Helm values or manifests.
-* Keep bootstrap-only credentials (like Argo CD repo SSH key and age private key) in Ansible Vault.
-
-This keeps plaintext secrets out of GitHub while preserving GitOps reconciliation.
-
-## MetalLB Address Pools
-
-MetalLB configuration lives here:
-
-* `apps/infrastructure/metallb-config/overlays/stage`
-* `apps/infrastructure/metallb-config/overlays/prod`
-
-Default pools are set to the high end of the `192.168.50.0/24` network:
-
-* Stage: `192.168.50.240-192.168.50.244`
-* Prod: `192.168.50.245-192.168.50.250`
-
-Adjust those ranges before first sync if those addresses are already reserved elsewhere in the homelab.
-
-## ExternalDNS
-
-ExternalDNS is installed per environment from the upstream Helm chart and configured for RFC2136.
-
-Application manifests:
-
-* `clusters/stage/external-dns.yaml`
-* `clusters/prod/external-dns.yaml`
-
-Current defaults:
-
-* DNS provider: RFC2136 (`provider.name: rfc2136`)
-* RFC2136 server: `192.168.50.53:53` (Technitium DNS)
-* RFC2136 auth: TSIG values read from Kubernetes secret `external-dns-rfc2136`
-* Domain filters: `stage.lab` (stage) and `prod.lab` (prod)
-* Sources: Kubernetes `Service` and `Ingress`
-
-The `external-dns-rfc2136` secret should be managed in this repository as a SOPS-encrypted
-Kubernetes Secret manifest and applied by Argo CD.
-
-## Cert-Manager Issuers
-
-Cluster-wide cert-manager issuer resources are managed in GitOps so certificate naming stays consistent across environments.
-
-Application manifests:
-
-* `clusters/stage/cert-manager-issuers.yaml`
-* `clusters/prod/cert-manager-issuers.yaml`
-
-Current default:
-
-* ClusterIssuer name: `letsencrypt-lab`
-* Issuer type: `selfSigned`
-
-All ingress annotations in this repo reference `cert-manager.io/cluster-issuer: letsencrypt-lab`.
-
-## Harbor
-
-Harbor is installed per environment from the upstream Helm chart and exposed through Traefik ingress.
-The current chart pin is `1.18.0`, which maps to Harbor app version `2.14`.
-
-Application manifests:
-
-* `clusters/stage/harbor.yaml`
-* `clusters/prod/harbor.yaml`
-
-Current defaults:
-
-* Stage hostname: `harbor.stage.lab`
-* Prod hostname: `harbor.prod.lab`
-* TLS source: Harbor chart auto-generated certificate
-* Storage class: `local-path`
-* Update strategy: `Recreate` for PVC-backed components on RWO storage
-
-Review the ingress hostnames, storage sizing, and admin password in those manifests before first sync. If you want trusted TLS for Docker and Helm clients, replace the auto-generated certificate flow with a secret issued by your preferred CA or cert-manager.
-
-## Reposilite
-
-Reposilite is installed per environment from custom Kubernetes manifests and exposed through Traefik ingress.
-
-Application manifests:
-
-* `clusters/stage/reposilite.yaml`
-* `clusters/prod/reposilite.yaml`
-
-Current defaults:
-
-* Stage hostname: `artifacts.stage.lab`
-* Prod hostname: `artifacts.prod.lab`
-* TLS source: cert-manager auto-generated certificate
-* Storage class: `local-path` (20Gi PVC)
-* Admin credentials: Managed as SOPS-encrypted Kubernetes Secret manifests in this repo
-
-The `reposilite-admin` secret should be managed as a SOPS-encrypted Kubernetes Secret manifest
-in this repository.
-
-## Kube Prometheus Stack
-
-Prometheus, Grafana, and Alertmanager are installed per environment from the upstream Helm chart and exposed through Traefik ingress.
-
-Application manifests:
-
-* `clusters/stage/kube-prometheus-stack.yaml`
-* `clusters/prod/kube-prometheus-stack.yaml`
-
-Current defaults:
-
-* Stage hostnames: `grafana.stage.lab`, `prometheus.stage.lab`, `alertmanager.stage.lab`
-* Prod hostnames: `grafana.prod.lab`, `prometheus.prod.lab`, `alertmanager.prod.lab`
-* TLS source: cert-manager auto-generated certificates
-* Grafana admin credentials: Managed as SOPS-encrypted Kubernetes Secret manifests in this repo
-
-The `grafana-admin` secret should be managed as a SOPS-encrypted Kubernetes Secret manifest in
-this repository. Grafana is automatically configured with Prometheus as a data source.
-
-## Adding More Apps
-
-To add another cluster service or workload:
-
-1. Add the application manifests under `apps/`
-2. Add a child Argo CD `Application` manifest under `clusters/<env>`
-3. Commit and push the change
-4. Let Argo CD reconcile it
-
-Keep anything needed to create the first working Argo CD instance in the Ansible repo, not here.
-
-## Smoke Test
-
-The `example/` directory contains a simple `LoadBalancer` nginx workload you can point an Argo CD application at after MetalLB is healthy.
-It is intentionally not part of the default cluster bootstrap.
+### Secrets That Must Be SOPS-Encrypted
+
+- `external-dns-rfc2136` TSIG secret (`external-dns` namespace)
+- `grafana-admin` secret (`monitoring` namespace)
+- Any Argo Workflows SSO/OIDC client secrets (if enabled later)
+- Any Longhorn backup target credentials (if using S3/NFS backup target)
+- Any additional app credentials introduced under `apps/**`
+
+Bootstrap-only secrets stay in Ansible Vault, not this repository:
+
+- Argo CD repository SSH private key
+- SOPS age private key
+
+## Dev Implementation Checklist
+
+- [x] Remove Harbor and Reposilite from cluster kustomizations
+- [x] Add dev AppProject and child Applications for core services
+- [x] Split dev Helm values into `apps/infrastructure/*/overlays/dev/values.yaml`
+- [x] Add dev Traefik config via `HelmChartConfig`
+- [x] Add dev Longhorn and Argo Workflows applications
+- [x] Add dev Argo CD config application
+- [ ] Encrypt and commit dev `external-dns-rfc2136` secret manifest
+- [ ] Encrypt and commit dev `grafana-admin` secret manifest
+- [ ] Sync dev and validate health for all core services
+- [ ] Promote working manifests to `stage`
+- [ ] Promote working manifests to `prod`
+
+## Recommended Additional Homelab Services
+
+- `reloader` for auto-restarting pods on ConfigMap/Secret changes
+- `descheduler` for periodic rebalance and cleanup on small clusters
+- `metrics-server` tuning (if needed) for HPA stability
+- `sealed-secrets` only if you want contributor-friendly secret UX beyond SOPS
+- `node-problem-detector` for better node-level alerting
+
+## Notes
+
+- `step-ca` is already hosted on a dedicated VM and can be integrated later as an issuer backend.
+- This repo assumes Traefik as ingress controller (no NGINX ingress usage).
+- Keep bootstrap and break-glass procedures in Ansible; keep steady-state in GitOps.

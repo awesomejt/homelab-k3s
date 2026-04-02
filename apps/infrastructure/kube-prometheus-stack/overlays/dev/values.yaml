@@ -1,0 +1,42 @@
+grafana:
+  admin:
+    existingSecret: "grafana-admin"
+    userKey: "admin-user"
+    passwordKey: "admin-password"
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - grafana.dev.lab
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.dev.lab
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-lab
+
+prometheus:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - prometheus.dev.lab
+    tls:
+      - secretName: prometheus-tls
+        hosts:
+          - prometheus.dev.lab
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-lab
+
+alertmanager:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - alertmanager.dev.lab
+    tls:
+      - secretName: alertmanager-tls
+        hosts:
+          - alertmanager.dev.lab
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-lab

@@ -3,9 +3,14 @@ kind: Kustomization
 
 resources:
   - project.yaml
+  - argocd-config.yaml
+  - traefik-config.yaml
+  - cert-manager-controller.yaml
   - cert-manager-issuers.yaml
   - metallb-controller.yaml
   - metallb-config.yaml
   - external-dns.yaml
+  - longhorn.yaml
   - headlamp.yaml
+  - argo-workflows.yaml
   - kube-prometheus-stack.yaml

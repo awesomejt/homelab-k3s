@@ -1,0 +1,22 @@
+server:
+  enabled: true
+  extraArgs:
+    - --auth-mode=server
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-lab
+      external-dns.alpha.kubernetes.io/hostname: workflows.dev.lab
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+    hosts:
+      - workflows.dev.lab
+    tls:
+      - secretName: argo-workflows-tls
+        hosts:
+          - workflows.dev.lab
+
+controller:
+  workflowNamespaces:
+    - argo

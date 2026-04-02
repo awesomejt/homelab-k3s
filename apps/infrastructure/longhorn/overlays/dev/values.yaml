@@ -1,0 +1,18 @@
+defaultSettings:
+  defaultReplicaCount: 2
+  defaultDataPath: /var/lib/longhorn/
+
+persistence:
+  defaultClassReplicaCount: 2
+
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  host: longhorn.dev.lab
+  tls: true
+  tlsSecret: longhorn-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-lab
+    external-dns.alpha.kubernetes.io/hostname: longhorn.dev.lab
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"

@@ -7,7 +7,5 @@ resources:
   - metallb-controller.yaml
   - metallb-config.yaml
   - external-dns.yaml
-  - harbor.yaml
   - headlamp.yaml
-  - reposilite.yaml
   - kube-prometheus-stack.yaml
