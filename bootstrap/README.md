@@ -14,7 +14,7 @@ It covers:
 
 ## 1. Install kubectl
 
-## Ubuntu and Ubuntu-based distros
+### Ubuntu and Ubuntu-based distros
 
 ```bash
 sudo apt-get update
@@ -31,7 +31,7 @@ sudo apt-get install -y kubectl
 kubectl version --client
 ```
 
-## Arch Linux and CachyOS
+### Arch Linux and CachyOS
 
 ```bash
 sudo pacman -Syu --needed kubectl
@@ -114,7 +114,7 @@ kubectl config use-context dev
 
 ## 6. Fix common hostname or certificate errors
 
-## Error: x509 certificate is valid for 127.0.0.1, not <api-ip-or-dns>
+### Error: x509 certificate is valid for 127.0.0.1, not <api-ip-or-dns>
 
 Preferred fix:
 
@@ -130,12 +130,12 @@ kubectl config set-cluster <cluster-name> --certificate-authority=
 
 Do not keep this in long-term production usage.
 
-## Error: certificate signed by unknown authority
+### Error: certificate signed by unknown authority
 
 - Ensure `certificate-authority-data` is present in kubeconfig.
 - Re-copy config from the server; do not strip CA data.
 
-## Error: dial tcp ... connect: no route to host / timeout
+### Error: dial tcp ... connect: no route to host / timeout
 
 - Confirm server field points to reachable IP/DNS and port 6443.
 - Check firewall/routing between your workstation and cluster API endpoint.
@@ -145,7 +145,7 @@ Do not keep this in long-term production usage.
 
 Add these to `~/.bashrc`, `~/.zshrc`, or `~/.config/fish/config.fish`.
 
-## Bash/Zsh
+### Bash/Zsh
 
 ```bash
 alias kdev='kubectl config use-context dev && kubectl config current-context'
@@ -154,7 +154,7 @@ alias kprod='kubectl config use-context prod && kubectl config current-context'
 alias kctx='kubectl config current-context'
 ```
 
-## Fish (CachyOS default shell often uses fish)
+### Fish (CachyOS default shell often uses fish)
 
 ```fish
 function kdev
@@ -237,7 +237,7 @@ After first login, rotate admin password.
 
 ## 11. Useful diagnostics
 
-## Cluster diagnostics
+### Cluster diagnostics
 
 ```bash
 kubectl get nodes -o wide
@@ -247,17 +247,17 @@ kubectl top nodes
 kubectl top pods -A
 ```
 
-## Argo CD diagnostics
+### Argo CD diagnostics
 
 ```bash
 kubectl -n argocd get pods -o wide
-kubectl -n argocd describe pod -l app.kubernetes.io/name=argocd-repo-server
+kubectl -n argocd describe pods -l app.kubernetes.io/name=argocd-repo-server
 kubectl -n argocd logs deploy/argocd-repo-server --tail=200
 kubectl -n argocd logs deploy/argocd-application-controller --tail=200
 kubectl -n argocd get applications -o wide
 ```
 
-## DNS and ingress diagnostics
+### DNS and ingress diagnostics
 
 ```bash
 kubectl -n external-dns logs deploy/external-dns --tail=200
@@ -265,7 +265,67 @@ kubectl -n argocd get ingress
 kubectl -n argocd describe ingress argocd-server-ingress
 ```
 
-## 12. Suggested daily workflow
+## 12. Argo CD UI Troubleshooting (Dev First)
+
+If you have not bootstrapped stage/prod yet, focus on the dev context only.
+
+```bash
+kubectl config use-context k3s-dev
+kubectl config current-context
+```
+
+Validate Argo CD namespace and config map:
+
+```bash
+kubectl -n argocd get ns argocd
+kubectl -n argocd get configmap argocd-cm
+kubectl -n argocd get pods
+```
+
+If `argocd-cm` is missing, force a sync of `argocd-config-dev` in Argo CD and verify:
+
+```bash
+kubectl -n argocd get application argocd-config-dev -o wide
+kubectl -n argocd get configmap argocd-cm
+```
+
+Restart Argo CD deployments from CLI:
+
+```bash
+kubectl -n argocd rollout restart deploy/argocd-server
+kubectl -n argocd rollout restart deploy/argocd-repo-server
+kubectl -n argocd rollout restart deploy/argocd-application-controller
+kubectl -n argocd rollout restart deploy/argocd-redis
+
+kubectl -n argocd rollout status deploy/argocd-server
+kubectl -n argocd rollout status deploy/argocd-repo-server
+kubectl -n argocd rollout status deploy/argocd-application-controller
+kubectl -n argocd rollout status deploy/argocd-redis
+```
+
+Check Argo CD server logs for UI/config loading failures:
+
+```bash
+kubectl -n argocd logs deploy/argocd-server --tail=200
+```
+
+Ingress and DNS verification:
+
+```bash
+kubectl -n argocd get ingress argocd-server-ingress
+kubectl -n argocd describe ingress argocd-server-ingress
+kubectl -n external-dns logs deploy/external-dns --tail=200 | grep argocd.dev.lab
+```
+
+Fallback access path (if ingress is not healthy):
+
+```bash
+kubectl -n argocd port-forward svc/argocd-server 8080:443
+```
+
+Open `https://localhost:8080` and test login.
+
+## 13. Suggested daily workflow
 
 ```bash
 # pick environment
