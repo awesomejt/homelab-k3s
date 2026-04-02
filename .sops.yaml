@@ -1,0 +1,3 @@
+creation_rules:
+  - path_regex: ^apps/.*\.yaml$
+    age: age1hsjjjnyycyz2r2c4rm9zkctcm0wz9nm4pwcq0ka5pzpypvthxfaqgqn888

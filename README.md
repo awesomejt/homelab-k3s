@@ -2,8 +2,8 @@
 
 This repository holds steady-state cluster configuration for the homelab K3s clusters.
 Bootstrap-only work stays in the Ansible repository: installing K3s, installing Argo CD,
-exposing Argo CD, adding the Git repository credential, and creating the initial root
-application.
+configuring KSOPS/SOPS decryption, adding the Git repository credential, and creating the
+initial root application.
 
 ## Layout
 
@@ -46,7 +46,9 @@ This keeps the split clean:
 
 1. Provision VMs and baseline OS configuration with the Proxmox and Ansible repos.
 2. Run the Ansible K3s playbook for `stage` or `prod`.
-3. Ansible installs K3s, optional cert-manager, Argo CD, the Argo CD ingress, the GitOps repo credential, and the root Argo CD application.
+3. Ansible installs K3s first, then runs a separate bootstrap playbook that installs Argo CD,
+   configures KSOPS/SOPS decryption with an age key, adds the GitOps repo credential, and creates
+   the root Argo CD application.
 4. Argo CD syncs `clusters/<env>` from this repo.
 5. MetalLB is installed and configured from Git.
 
@@ -76,6 +78,106 @@ The GitOps repo URL used by the bootstrap flow is:
 ```text
 git@github.com:awesomejt/homelab-k3s.git
 ```
+
+## SOPS Secret Management
+
+Runtime application secrets should be committed in this repository only as SOPS-encrypted
+manifests. The age private key is stored in Ansible Vault and seeded during bootstrap as a
+Kubernetes secret in the `argocd` namespace.
+
+### Setup: Configure `.sops.yaml`
+
+Create a `.sops.yaml` file in the repository root to define the encryption key:
+
+```yaml
+creation_rules:
+  - path_regex: ^apps/.*\.yaml$
+    age: age1<your-public-key-here>
+```
+
+The public key corresponds to the `vault_sops_age_key` in `ansible/vars/<env>/secrets.yaml`.
+
+To find your public key if you only have the private key:
+
+```bash
+# Extract public key from age private key
+grep "# public key:" ~/.config/sops/age/keys.txt | sed 's/# public key: //'
+```
+
+### Creating Encrypted Secrets
+
+Example: Create a secret for ExternalDNS RFC2136 TSIG credentials:
+
+```bash
+# Create plaintext manifest
+cat > apps/infrastructure/external-dns/base/secret.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: external-dns-rfc2136
+  namespace: external-dns
+type: Opaque
+stringData:
+  tsig-secret: "your-tsig-key-here"
+  tsig-keyname: "externaldns.lab"
+EOF
+
+# Encrypt it with SOPS
+sops -e -i apps/infrastructure/external-dns/base/secret.yaml
+
+# Commit the encrypted version
+git add apps/infrastructure/external-dns/base/secret.yaml
+git commit -m "feat: add external-dns TSIG secret (encrypted)"
+git push
+```
+
+Once pushed, Argo CD will automatically decrypt the secret using the age key seeded in the `argocd`
+namespace during bootstrap. You can verify decryption works by checking the secret in the cluster:
+
+```bash
+# After Argo CD syncs
+k3s kubectl -n external-dns get secret external-dns-rfc2136 -o jsonpath='{.data.tsig-secret}' | base64 -d
+```
+
+### Common Encrypted Secrets
+
+Example paths for application secrets:
+
+```
+apps/infrastructure/externa-dns/base/secret.yaml         # ExternalDNS TSIG
+apps/infrastructure/harbor/base/secret.yaml               # Harbor admin credentials
+apps/infrastructure/reposilite/base/secret.yaml           # Reposilite credentials
+apps/infrastructure/kube-prometheus-stack/base/secret.yaml # Grafana admin password
+```
+
+Example: Grafana admin password:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-admin
+  namespace: monitoring
+type: Opaque
+stringData:
+  admin-password: "your-strong-password"
+```
+
+Reference from your Helm values:
+
+```yaml
+# In values overlay or Helm release
+adminPassword: <ENCRYPTED-SECRET-GOES-HERE>  # OR reference via ExternalSecret
+# Better: use ExternalSecret + secret reference
+```
+
+### Recommended Pattern
+
+* Keep encrypted secret manifests under `apps/**` alongside the workloads that consume them.
+* Reference those secrets from your Helm values or manifests.
+* Keep bootstrap-only credentials (like Argo CD repo SSH key and age private key) in Ansible Vault.
+
+This keeps plaintext secrets out of GitHub while preserving GitOps reconciliation.
 
 ## MetalLB Address Pools
 
@@ -108,13 +210,8 @@ Current defaults:
 * Domain filters: `stage.lab` (stage) and `prod.lab` (prod)
 * Sources: Kubernetes `Service` and `Ingress`
 
-The `external-dns-rfc2136` secret is seeded by the Ansible K3s bootstrap role from vault values in `ansible/vars/<env>/secrets.yaml`:
-
-* `vault_external_dns_rfc2136_tsig_keyname`
-* `vault_external_dns_rfc2136_tsig_secret`
-* `vault_external_dns_rfc2136_tsig_secret_alg` (optional, defaults to `hmac-sha256`)
-
-This keeps sensitive DNS credentials out of Git while still allowing GitOps-managed application configuration.
+The `external-dns-rfc2136` secret should be managed in this repository as a SOPS-encrypted
+Kubernetes Secret manifest and applied by Argo CD.
 
 ## Cert-Manager Issuers
 
@@ -167,14 +264,10 @@ Current defaults:
 * Prod hostname: `artifacts.prod.lab`
 * TLS source: cert-manager auto-generated certificate
 * Storage class: `local-path` (20Gi PVC)
-* Admin credentials: Seeded by Ansible from vault values
+* Admin credentials: Managed as SOPS-encrypted Kubernetes Secret manifests in this repo
 
-The `reposilite-admin` secret is seeded by the Ansible K3s bootstrap role from values in `ansible/vars/<env>/vars.yaml` and `ansible/vars/<env>/secrets.yaml`:
-
-* `reposilite_admin_username` (clear-text in vars)
-* `vault_reposilite_admin_password` (vaulted in secrets)
-
-This keeps sensitive repository credentials out of Git while still allowing GitOps-managed application configuration.
+The `reposilite-admin` secret should be managed as a SOPS-encrypted Kubernetes Secret manifest
+in this repository.
 
 ## Kube Prometheus Stack
 
@@ -190,14 +283,10 @@ Current defaults:
 * Stage hostnames: `grafana.stage.lab`, `prometheus.stage.lab`, `alertmanager.stage.lab`
 * Prod hostnames: `grafana.prod.lab`, `prometheus.prod.lab`, `alertmanager.prod.lab`
 * TLS source: cert-manager auto-generated certificates
-* Grafana admin credentials: Seeded by Ansible from vault values
+* Grafana admin credentials: Managed as SOPS-encrypted Kubernetes Secret manifests in this repo
 
-The `grafana-admin` secret is seeded by the Ansible K3s bootstrap role from values in `ansible/vars/<env>/vars.yaml` and `ansible/vars/<env>/secrets.yaml`:
-
-* `grafana_admin_username` (clear-text in vars)
-* `vault_grafana_admin_password` (vaulted in secrets)
-
-Grafana is automatically configured with Prometheus as a data source. This keeps sensitive monitoring credentials out of Git while still allowing GitOps-managed application configuration.
+The `grafana-admin` secret should be managed as a SOPS-encrypted Kubernetes Secret manifest in
+this repository. Grafana is automatically configured with Prometheus as a data source.
 
 ## Adding More Apps
 
