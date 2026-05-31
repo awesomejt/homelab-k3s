@@ -6,6 +6,7 @@ resources:
   - argocd-config.yaml
   - traefik-config.yaml
   - metrics-server-config.yaml
+  - coredns-config.yaml
   - cert-manager-controller.yaml
   - cert-manager-issuers.yaml
   - metallb-controller.yaml
