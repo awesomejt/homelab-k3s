@@ -3,4 +3,7 @@ kind: ClusterIssuer
 metadata:
   name: letsencrypt-lab
 spec:
-  selfSigned: {}
+  ca:
+    # step-ca-intermediate Secret is created by the k3s-bootstrap Ansible role.
+    # All ingress Certificate resources reference this issuer by the letsencrypt-lab name.
+    secretName: step-ca-intermediate

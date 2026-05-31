@@ -20,6 +20,9 @@ spec:
     - repoURL: git@github.com:awesomejt/homelab-k3s.git
       targetRevision: main
       ref: values
+    - repoURL: git@github.com:awesomejt/homelab-k3s.git
+      targetRevision: main
+      path: apps/infrastructure/kube-prometheus-stack/base
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
