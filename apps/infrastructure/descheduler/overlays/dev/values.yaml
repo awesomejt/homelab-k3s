@@ -6,12 +6,15 @@ deschedulerPolicy:
   profiles:
     - name: default
       pluginConfig:
+        - name: DefaultEvictor
         - name: RemoveDuplicates
         - name: RemovePodsViolatingNodeTaints
         - name: RemovePodsViolatingInterPodAntiAffinity
       plugins:
-        deschedule:
+        balance:
           enabled:
             - RemoveDuplicates
+        deschedule:
+          enabled:
             - RemovePodsViolatingNodeTaints
             - RemovePodsViolatingInterPodAntiAffinity
